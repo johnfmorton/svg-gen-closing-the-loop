@@ -21,7 +21,7 @@ import { svgGenerator } from './points-on-a-line-ovalish.js';
 // Used for the filename of the SVG generated that will be timestamped
 // Don't include .svg extension in the name. Also, the filename will
 // include a timestamp that starts with an underscore.
-const projectTitle = "Points on a line";
+const projectTitle = "Closing the Loop";
 
 /*
 * The code below this point should not need to be changed in most cases.
