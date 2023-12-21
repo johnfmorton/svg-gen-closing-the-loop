@@ -1,11 +1,5 @@
 import {
-    createNoiseGrid,
-    createVoronoiTessellation,
     random,
-    randomBias,
-    map,
-    spline,
-    pointsInPath,
     seedPRNG,
 } from '@georgedoescode/generative-utils'
 
@@ -91,13 +85,11 @@ export function svgGenerator(svgObj) {
         }
     }
 
-
-
     // using spline, create a path from the outer points
-    let pathString = _spline8(points, 1.5, settings.closeLoop)
+    let pathString = _spline(points, 1.5, settings.closeLoop)
 
     // draw the path
-    let splinePath = svgObj
+    svgObj
         .path(pathString)
         .fill('rgba(0, 55, 255, 0.1)')
         .stroke({ width: 1 })
@@ -198,52 +190,8 @@ function _formatPoints(points, close) {
     return points.flat()
 }
 
-function _spline1(points = [], tension = 1, close = false, cb) {
-    points = _formatPoints(points, close)
 
-    const size = points.length
-    const last = size - 4
-
-    const startPointX = close ? points[2] : points[0]
-    const startPointY = close ? points[3] : points[1]
-
-    let path = 'M' + [startPointX, startPointY]
-
-    cb && cb('MOVE', [startPointX, startPointY])
-
-    const startIteration = close ? 2 : 0
-    const maxIteration = close ? size - 4 : size - 2
-    const inc = 2
-
-    for (let i = startIteration; i < maxIteration; i += inc) {
-        const x0 = i ? points[i - 2] : points[0]
-        const y0 = i ? points[i - 1] : points[1]
-
-        const x1 = points[i + 0]
-        const y1 = points[i + 1]
-
-        const x2 = points[i + 2]
-        const y2 = points[i + 3]
-
-        const x3 = i !== last ? points[i + 4] : x2
-        const y3 = i !== last ? points[i + 5] : y2
-
-        const cp1x = x1 + ((x2 - x0) / 6) * tension
-        const cp1y = y1 + ((y2 - y0) / 6) * tension
-
-        const cp2x = x2 - ((x3 - x1) / 6) * tension
-        const cp2y = y2 - ((y3 - y1) / 6) * tension
-
-        path += 'C' + [cp1x, cp1y, cp2x, cp2y, x2, y2]
-
-        cb && cb('CURVE', [cp1x, cp1y, cp2x, cp2y, x2, y2])
-    }
-
-    return path
-}
-
-
-function _spline8(points = [], tension = 0.5, close = false, cb) {
+function _spline(points = [], tension = 0.5, close = false, cb) {
     if (points.length < 2) return ''
 
     // Helper function to calculate a Catmull-Rom spline point
