@@ -121,11 +121,15 @@ export function svgGenerator(svgObj) {
         }
     })
 
+  let amplitude = settings.amplitude ?? 5;
+  let frequency = settings.frequency ?? 25;
+  let resolution = settings.resolution ?? 100;
+
     // draw the points in the path with the sine wave
-    let sineWavePath = sineWaveAlongPath(pathString, 5, 25)
-    sineWavePath = sineWaveAlongPathAdvLessJagged(pathString, 5, 25, 100)
+    let sineWavePath = sineWaveAlongPath(pathString, 5, 0.5)
+    // sineWavePath = sineWaveAlongPathAdvLessJagged(pathString, 5, 15, resolution)
     // sineWavePath = sineWaveAlongPathAdvOld(pathString, 3, 22, 2)
-    sineWavePath = sineWaveAlongPathSmooth(pathString, 10, 15, 125)
+    sineWavePath = sineWaveAlongPathSmooth(pathString, amplitude, frequency, resolution)
 
     console.log(
         'values passed in:',
@@ -139,9 +143,9 @@ export function svgGenerator(svgObj) {
 
     svgObj
         .path(sineWavePath)
-        .fill('#ff0')
+        .fill('none')
         .stroke({ width: 3 })
-        .stroke({ color: '#f00' })
+        .stroke({ color: '#000' })
 
     // svgObj.path(sineWavePath).fill('none').stroke({ width: 1 }).stroke({ color: '#f00' })
 }
@@ -232,86 +236,6 @@ function sineWaveAlongPath(svgPathString, amplitude, frequency) {
     return sinePath
 }
 
-function sineWaveAlongPathAdvOld(
-    svgPathString,
-    amplitude,
-    frequency,
-    resolution = 100
-) {
-    // Helper function to parse SVG path string into points
-    function parsePathString(pathStr) {
-        let points = []
-        let commands = pathStr.match(/[ML][^ML]+/gi)
-
-        if (commands) {
-            commands.forEach((cmd) => {
-                let coords = cmd
-                    .slice(1)
-                    .trim()
-                    .split(/[\s,]+/)
-                    .map(Number)
-                for (let i = 0; i < coords.length; i += 2) {
-                    points.push({ x: coords[i], y: coords[i + 1] })
-                }
-            })
-        }
-        return points
-    }
-
-    // Function to calculate the distance between two points
-    function distance(p1, p2) {
-        return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
-    }
-
-    // Function to interpolate a point on the line segment
-    function interpolate(p1, p2, ratio) {
-        return {
-            x: p1.x + (p2.x - p1.x) * ratio,
-            y: p1.y + (p2.y - p1.y) * ratio,
-        }
-    }
-
-    // Function to calculate the normal vector
-    function normalVector(p1, p2) {
-        const dx = p2.x - p1.x
-        const dy = p2.y - p1.y
-        const length = Math.sqrt(dx * dx + dy * dy)
-        return { x: -dy / length, y: dx / length }
-    }
-
-    let pathPoints = parsePathString(svgPathString)
-    if (pathPoints.length < 2) return ''
-
-    let sinePath = ''
-    let accumulatedDistance = 0
-
-    sinePath += 'M' + [pathPoints[0].x, pathPoints[0].y].join(',')
-
-    for (let i = 1; i < pathPoints.length; i++) {
-        const p1 = pathPoints[i - 1]
-        const p2 = pathPoints[i]
-        const normal = normalVector(p1, p2)
-
-        for (let j = 0; j <= resolution; j++) {
-            const t = j / resolution
-            const interpolatedPoint = interpolate(p1, p2, t)
-            const segmentLength = distance(p1, interpolatedPoint)
-
-            const sineValue =
-                amplitude *
-                Math.sin(2 * Math.PI * frequency * accumulatedDistance)
-            const wavePoint = {
-                x: interpolatedPoint.x + sineValue * normal.x,
-                y: interpolatedPoint.y + sineValue * normal.y,
-            }
-
-            sinePath += 'L' + [wavePoint.x, wavePoint.y].join(',')
-            accumulatedDistance += segmentLength
-        }
-    }
-
-    return sinePath
-}
 
 // Parse the SVG path string into points
 function parsePathString(pathStr) {
@@ -530,7 +454,7 @@ function sineWaveAlongPathSmooth(
     return sinePath
 }
 
-function toFixedNumber(num, digits, base) {
+function toFixedNumberOfDigits(num, digits) {
     var pow = Math.pow(base || 10, digits)
     return Math.round(num * pow) / pow
 }
@@ -557,21 +481,6 @@ function _settingsInit() {
         },
     }
 
-    const numberOfDivisions = {
-        sltype: 'sl-input',
-        name: 'numberOfDivisions',
-        options: {
-            label: 'Number of divisions',
-            type: 'number',
-            min: 5,
-            max: 1000,
-            value: 10,
-            step: 1,
-            size: 'medium',
-            helpText: 'The number of points used to draw the tessellation.',
-        },
-    }
-
     const tension = {
         sltype: 'sl-input',
         name: 'tension',
@@ -586,6 +495,67 @@ function _settingsInit() {
             helpText: 'The tension of the spline.',
         },
     }
+
+    const numberOfDivisions = {
+        sltype: 'sl-input',
+        name: 'numberOfDivisions',
+        options: {
+            label: 'Number of divisions',
+            type: 'number',
+            min: 5,
+            max: 1000,
+            value: 5,
+            step: 1,
+            size: 'medium',
+            helpText: 'The number of points used to draw the tessellation.',
+        },
+    }
+
+  const amplitude = {
+        sltype: 'sl-input',
+        name: 'amplitude',
+        options: {
+            label: 'Amplitude',
+            type: 'number',
+            min: 0,
+            max: 100,
+            value: 5,
+            step: 1,
+            size: 'medium',
+            helpText: 'The amplitude of the sine wave.',
+        },
+  }
+
+  const frequency = {
+        sltype: 'sl-input',
+        name: 'frequency',
+        options: {
+            label: 'Frequency',
+            type: 'number',
+            min: 0,
+            max: 100,
+            value: 25,
+            step: 1,
+            size: 'medium',
+            helpText: 'The frequency of the sine wave.',
+    },
+  }
+
+  const resolution = {
+        sltype: 'sl-input',
+        name: 'resolution',
+        options: {
+            label: 'Resolution',
+            type: 'number',
+            min: 0,
+            max: 1000,
+            value: 100,
+            step: 1,
+            size: 'medium',
+            helpText: 'The resolution of the sine wave.',
+        },
+    }
+
 
     const closeLoop = {
         sltype: 'sl-switch',
@@ -641,7 +611,10 @@ function _settingsInit() {
     mySettings.add(
         numPoints,
         tension,
-        numberOfDivisions,
+      // numberOfDivisions,
+      amplitude,
+      frequency,
+      resolution,
         closeLoop,
         divider,
         resetSeedToggle,
