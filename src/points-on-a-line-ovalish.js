@@ -119,6 +119,16 @@ export function svgGenerator(svgObj) {
             svgObj.circle(5).center(point.x, point.y).fill('#00f')
         }
     })
+
+
+  // draw the points in the path with the sine wave
+  let sineWavePath = sineWaveAlongPath(pathString, 5, 0.5);
+
+  console.log('sineWavePath', sineWavePath)
+
+  svgObj.path(sineWavePath).fill('none').stroke({ width: 1 }).stroke({ color: '#f00' })
+
+  // svgObj.path(sineWavePath).fill('none').stroke({ width: 1 }).stroke({ color: '#f00' })
 }
 
 
@@ -150,21 +160,181 @@ function _calculateCentersortPointsIntoOval(points, closeLoop = false) {
   return updatedPoints;
 }
 
+function sineWaveAlongPath(svgPathString, amplitude, frequency) {
+    // Helper function to parse the SVG path string and extract points
+    function parsePathString(pathStr) {
+        const pathRegex = /([ML])([^ML]+)/gi
+        let match
+        const points = []
 
-function _pointsInPath(path, numPoints = 10) {
-    const pathLength = path.getTotalLength()
-    const step = pathLength / (numPoints - 1) // Adjusted step to account for the end point
-    const points = []
+        while ((match = pathRegex.exec(pathStr)) !== null) {
+            const [_, command, pointStr] = match
+            const coords = pointStr.trim().split(/\s+|,/).map(Number)
+            for (let i = 0; i < coords.length; i += 2) {
+                points.push({ x: coords[i], y: coords[i + 1] })
+            }
+        }
 
-    for (let i = 0; i < numPoints - 1; i++) {
-        points.push(path.getPointAtLength(i * step))
+        return points
     }
 
-    // Ensure the last point is the end of the path
-    points.push(path.getPointAtLength(pathLength))
+    // Function to calculate the normal vector
+    function normalVector(p1, p2) {
+        const dx = p2.x - p1.x
+        const dy = p2.y - p1.y
+        const length = Math.sqrt(dx * dx + dy * dy)
+        return { x: -dy / length, y: dx / length }
+    }
 
-    return points
+    const pathPoints = parsePathString(svgPathString)
+    if (pathPoints.length < 2) return ''
+
+    let sinePath = 'M'
+    let accumulatedDistance = 0
+
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+        const p1 = pathPoints[i]
+        const p2 = pathPoints[i + 1]
+        const normal = normalVector(p1, p2)
+
+        const pointsAlongSegment = 20 // Adjust for smoother or coarser curves
+        for (let j = 0; j <= pointsAlongSegment; j++) {
+            const t = j / pointsAlongSegment
+            const interpolatedPoint = {
+                x: p1.x + t * (p2.x - p1.x),
+                y: p1.y + t * (p2.y - p1.y),
+            }
+
+            const sineValue =
+                amplitude *
+                Math.sin(2 * Math.PI * frequency * accumulatedDistance)
+            const wavePoint = {
+                x: interpolatedPoint.x + sineValue * normal.x,
+                y: interpolatedPoint.y + sineValue * normal.y,
+            }
+            sinePath += `${i === 0 && j === 0 ? '' : 'L'}${wavePoint.x},${
+                wavePoint.y
+            }`
+            accumulatedDistance += 1 / pointsAlongSegment
+        }
+    }
+
+    return sinePath
 }
+
+
+function sineWaveAlongPathAdv(
+    svgPathString,
+    amplitude,
+    frequency,
+    resolution = 100
+) {
+    // Helper function to parse SVG path string into points
+    function parsePathString(pathStr) {
+        let points = []
+        let commands = pathStr.match(/[ML][^ML]+/gi)
+
+        if (commands) {
+            commands.forEach((cmd) => {
+                let [command, ...coords] = cmd.trim().split(/[\s,]+/)
+                coords = coords.map(Number)
+                for (let i = 0; i < coords.length; i += 2) {
+                    points.push({ x: coords[i], y: coords[i + 1] })
+                }
+            })
+        }
+        return points
+    }
+
+    // Function to calculate the distance between two points
+    function distance(p1, p2) {
+        return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2))
+    }
+
+    // Function to interpolate a point on the line segment
+    function interpolate(p1, p2, ratio) {
+        return {
+            x: p1.x + (p2.x - p1.x) * ratio,
+            y: p1.y + (p2.y - p1.y) * ratio,
+        }
+    }
+
+    let pathPoints = parsePathString(svgPathString)
+    if (pathPoints.length < 2) return ''
+
+    // Calculate total length of the path
+    let totalLength = 0
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+        totalLength += distance(pathPoints[i], pathPoints[i + 1])
+    }
+
+    let sinePath = 'M'
+    let accumulatedLength = 0
+
+    for (let i = 0; i < totalLength; i += totalLength / resolution) {
+        // Find the segment where the current point falls
+        let segmentLengthAccumulated = 0
+        let currentSegmentIndex = 0
+        while (
+            segmentLengthAccumulated +
+                distance(
+                    pathPoints[currentSegmentIndex],
+                    pathPoints[currentSegmentIndex + 1]
+                ) <
+            i
+        ) {
+            segmentLengthAccumulated += distance(
+                pathPoints[currentSegmentIndex],
+                pathPoints[currentSegmentIndex + 1]
+            )
+            currentSegmentIndex++
+        }
+
+        // Calculate the exact point and its normal vector
+        let segmentRatio =
+            (i - segmentLengthAccumulated) /
+            distance(
+                pathPoints[currentSegmentIndex],
+                pathPoints[currentSegmentIndex + 1]
+            )
+        let pointOnPath = interpolate(
+            pathPoints[currentSegmentIndex],
+            pathPoints[currentSegmentIndex + 1],
+            segmentRatio
+        )
+        let dx =
+            pathPoints[currentSegmentIndex + 1].x -
+            pathPoints[currentSegmentIndex].x
+        let dy =
+            pathPoints[currentSegmentIndex + 1].y -
+            pathPoints[currentSegmentIndex].y
+        let normal = { x: -dy, y: dx }
+
+        // Normalize the normal vector
+        let normalLength = Math.sqrt(normal.x * normal.x + normal.y * normal.y)
+        normal.x /= normalLength
+        normal.y /= normalLength
+
+        // Apply sine wave transformation
+        let sineValue =
+            amplitude *
+            Math.sin(
+                2 * Math.PI * frequency * (accumulatedLength / totalLength)
+            )
+        accumulatedLength += distance(pointOnPath, pointOnPath)
+
+        sinePath +=
+            'L' +
+            [
+                pointOnPath.x + sineValue * normal.x,
+                pointOnPath.y + sineValue * normal.y,
+            ].join(',')
+    }
+
+    return sinePath
+}
+
+
 
 
 // helper function to initialize the settings manager
