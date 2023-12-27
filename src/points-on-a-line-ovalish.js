@@ -97,7 +97,7 @@ export function svgGenerator(svgObj) {
         .stroke({ width: 1 })
         .stroke({ color: '#333' })
 
-    console.log(pathString)
+    // console.log(pathString)
     const pathElement = document.createElementNS(
         'http://www.w3.org/2000/svg',
         'path'
@@ -125,7 +125,7 @@ export function svgGenerator(svgObj) {
 
   // draw the points in the path with the sine wave
   let sineWavePath = sineWaveAlongPath(pathString, 5, 0.5)
-  sineWavePath = sineWaveAlongPathAdv(pathString, 5, 1.5, 40000)
+  sineWavePath = sineWaveAlongPathAdv(pathString, 30, 20, 25000)
 
   console.log('values passed in:', { pathString }, { amplitude: 5 }, { frequency: 0.5 }, { resolution: 3 });
 
@@ -312,16 +312,7 @@ function sineWaveAlongPathAdvOld(
 }
 
 
-
-
-
-function sineWaveAlongPathAdv(
-    svgPathString,
-    amplitude,
-    frequency,
-    resolution = 100
-) {
-    // Parse the SVG path string into points
+// Parse the SVG path string into points
     function parsePathString(pathStr) {
         let points = []
         const commands = pathStr.match(/[MLZ][^MLZ]+/gi) || []
@@ -356,23 +347,25 @@ function sineWaveAlongPathAdv(
         return { x: -dy / len, y: dx / len }
     }
 
+
+function sineWaveAlongPathAdv(
+    svgPathString,
+    amplitude,
+    frequency,
+    resolution = 100
+) {
+    // Helper functions: parsePathString, distance, interpolate, and getNormal
+    // Ensure these are correctly implemented as in previous examples.
+
     let pathPoints = parsePathString(svgPathString)
     if (pathPoints.length < 2) return ''
 
     let totalLength = 0
     for (let i = 0; i < pathPoints.length - 1; i++) {
-        let segLength = distance(pathPoints[i], pathPoints[i + 1])
-        if (isNaN(segLength)) {
-            console.error(
-                'Invalid segment length',
-                pathPoints[i],
-                pathPoints[i + 1]
-            )
-            return '' // Early return in case of invalid segment length
-        }
-        totalLength += segLength
+        totalLength += distance(pathPoints[i], pathPoints[i + 1])
     }
 
+    let wavelength = totalLength / frequency
     let sinePath = 'M' + [pathPoints[0].x, pathPoints[0].y].join(',')
     let accumulatedLength = 0
 
@@ -383,9 +376,7 @@ function sineWaveAlongPathAdv(
             1
         )
 
-      console.log('pointsInSegment:', pointsInSegment)
-
-        for (let j = 0; j < pointsInSegment; j++) {
+        for (let j = 0; j <= pointsInSegment; j++) {
             let t = j / pointsInSegment
             let interpolatedPoint = interpolate(
                 pathPoints[i - 1],
@@ -394,8 +385,7 @@ function sineWaveAlongPathAdv(
             )
             let normal = getNormal(pathPoints[i - 1], pathPoints[i])
 
-            let phase =
-                (2 * Math.PI * frequency * accumulatedLength) / totalLength
+            let phase = ((2 * Math.PI) / wavelength) * accumulatedLength
             let sineOffset = amplitude * Math.sin(phase)
 
             let wavePoint = {
@@ -412,7 +402,7 @@ function sineWaveAlongPathAdv(
     if (svgPathString.trim().endsWith('Z')) {
         sinePath += 'Z'
     }
-  debugger;
+
     return sinePath
 }
 
