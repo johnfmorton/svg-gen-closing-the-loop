@@ -21,7 +21,7 @@ import { svgGenerator } from './squiggly-shape.js';
 // Used for the filename of the SVG generated that will be timestamped
 // Don't include .svg extension in the name. Also, the filename will
 // include a timestamp that starts with an underscore.
-const projectTitle = "Squiggly";
+const projectTitle = "Iris Generator";
 
 /*
 * The code below this point should not need to be changed in most cases.

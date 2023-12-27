@@ -5,6 +5,8 @@ import {
     pointsInPath,
 } from '@georgedoescode/generative-utils'
 
+import simpliy from 'simplify-js';
+
 import { mySettings } from './settingsManager.js'
 const settings = _settingsInit()
 
@@ -14,14 +16,16 @@ export function svgGenerator(svgObj) {
     svgObj.clear()
 
     // get the width and height of the svg canvas
-    const { width, height } = svgObj.viewbox()
+  const { width, height } = svgObj.viewbox();
+
+
 
     const debug = settings.debug ?? false
 
     // If the resetSeed toggle is checked (true), or if there is no seed value assigned
     if (settings.resetSeed || !settings.seedValue) {
         // create a new random seed number
-        let myseed = Math.floor(Math.random() * 100000)
+        let myseed = Math.floor(Math.random() * 10000000)
         // assign the seed value to the settings object`
         settings.seedValue = myseed
         // set the seed for the PRNG
@@ -36,7 +40,7 @@ export function svgGenerator(svgObj) {
     // find the center of the canvas
     const centerX = width / 2
     const centerY = height / 2
-    const radius = height / 2
+    const radius = height / 2.5
 
     // Get the number of points to draw from the settings object or use the default value of 500
     let numPoints = settings.numPoints ?? 4
@@ -56,6 +60,9 @@ export function svgGenerator(svgObj) {
         // add the point to the points array
         points.push({ x, y })
     }
+
+  // simplify the points
+  points = simpliy(points, 50, true)
 
     const ovalPoints = _calculateCentersortPointsIntoOval(points, false)
 
@@ -474,7 +481,7 @@ function _settingsInit() {
             type: 'number',
             min: 1,
             max: 1000,
-            value: 7,
+            value: 40,
             step: 1,
             size: 'medium',
             helpText: 'The number of points used to draw the tessellation.',
@@ -489,7 +496,7 @@ function _settingsInit() {
             type: 'number',
             min: 0,
             max: 10,
-            value: 0.5,
+            value: 2.1,
             step: 0.1,
             size: 'medium',
             helpText: 'The tension of the spline.',
@@ -519,7 +526,7 @@ function _settingsInit() {
             type: 'number',
             min: 0,
             max: 100,
-            value: 5,
+            value: 13,
             step: 1,
             size: 'medium',
             helpText: 'The amplitude of the sine wave.',
@@ -534,27 +541,27 @@ function _settingsInit() {
             type: 'number',
             min: 0,
             max: 100,
-            value: 25,
+            value: 15,
             step: 1,
             size: 'medium',
             helpText: 'The frequency of the sine wave.',
     },
   }
 
-  const resolution = {
-        sltype: 'sl-input',
-        name: 'resolution',
-        options: {
-            label: 'Resolution',
-            type: 'number',
-            min: 0,
-            max: 1000,
-            value: 100,
-            step: 1,
-            size: 'medium',
-            helpText: 'The resolution of the sine wave.',
-        },
-    }
+  // const resolution = {
+  //       sltype: 'sl-input',
+  //       name: 'resolution',
+  //       options: {
+  //           label: 'Resolution',
+  //           type: 'number',
+  //           min: 0,
+  //           max: 1000,
+  //           value: 100,
+  //           step: 1,
+  //           size: 'medium',
+  //           helpText: 'The resolution of the sine wave.',
+  //       },
+  //   }
 
 
     const closeLoop = {
@@ -564,7 +571,7 @@ function _settingsInit() {
             label: 'Close Loop',
             size: 'medium',
             helpText: 'Close the loop?',
-            checked: false,
+            checked: true,
         },
     }
 
@@ -614,7 +621,7 @@ function _settingsInit() {
       // numberOfDivisions,
       amplitude,
       frequency,
-      resolution,
+      // resolution,
         closeLoop,
         divider,
         resetSeedToggle,
