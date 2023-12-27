@@ -104,10 +104,12 @@ export function svgGenerator(svgObj) {
     )
     pathElement.setAttribute('d', pathString)
 
-    console.log(pathElement)
+    // console.log('pathElement', pathElement)
 
     // get the points in the path; returns array of objects with x and y properties
     let pip = pointsInPath(pathElement, settings.numberOfDivisions ?? 5)
+
+
 
     // // draw the points in the path
     pip.forEach((point, index) => {
@@ -122,11 +124,15 @@ export function svgGenerator(svgObj) {
 
 
   // draw the points in the path with the sine wave
-  let sineWavePath = sineWaveAlongPath(pathString, 5, 0.5);
+  let sineWavePath = sineWaveAlongPath(pathString, 5, 0.5)
+  sineWavePath = sineWaveAlongPathAdv(pathString, 5, 1.5, 40000)
 
-  console.log('sineWavePath', sineWavePath)
+  console.log('values passed in:', { pathString }, { amplitude: 5 }, { frequency: 0.5 }, { resolution: 3 });
 
-  svgObj.path(sineWavePath).fill('none').stroke({ width: 1 }).stroke({ color: '#f00' })
+
+  console.log('!sineWavePath', sineWavePath)
+
+  svgObj.path(sineWavePath).fill('#ff0').stroke({ width: 3 }).stroke({ color: '#f00' })
 
   // svgObj.path(sineWavePath).fill('none').stroke({ width: 1 }).stroke({ color: '#f00' })
 }
@@ -223,7 +229,8 @@ function sineWaveAlongPath(svgPathString, amplitude, frequency) {
 }
 
 
-function sineWaveAlongPathAdv(
+
+function sineWaveAlongPathAdvOld(
     svgPathString,
     amplitude,
     frequency,
@@ -236,8 +243,11 @@ function sineWaveAlongPathAdv(
 
         if (commands) {
             commands.forEach((cmd) => {
-                let [command, ...coords] = cmd.trim().split(/[\s,]+/)
-                coords = coords.map(Number)
+                let coords = cmd
+                    .slice(1)
+                    .trim()
+                    .split(/[\s,]+/)
+                    .map(Number)
                 for (let i = 0; i < coords.length; i += 2) {
                     points.push({ x: coords[i], y: coords[i + 1] })
                 }
@@ -248,7 +258,7 @@ function sineWaveAlongPathAdv(
 
     // Function to calculate the distance between two points
     function distance(p1, p2) {
-        return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2))
+        return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
     }
 
     // Function to interpolate a point on the line segment
@@ -259,80 +269,155 @@ function sineWaveAlongPathAdv(
         }
     }
 
+    // Function to calculate the normal vector
+    function normalVector(p1, p2) {
+        const dx = p2.x - p1.x
+        const dy = p2.y - p1.y
+        const length = Math.sqrt(dx * dx + dy * dy)
+        return { x: -dy / length, y: dx / length }
+    }
+
     let pathPoints = parsePathString(svgPathString)
     if (pathPoints.length < 2) return ''
 
-    // Calculate total length of the path
-    let totalLength = 0
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-        totalLength += distance(pathPoints[i], pathPoints[i + 1])
-    }
+    let sinePath = ''
+    let accumulatedDistance = 0
 
-    let sinePath = 'M'
-    let accumulatedLength = 0
+    sinePath += 'M' + [pathPoints[0].x, pathPoints[0].y].join(',')
 
-    for (let i = 0; i < totalLength; i += totalLength / resolution) {
-        // Find the segment where the current point falls
-        let segmentLengthAccumulated = 0
-        let currentSegmentIndex = 0
-        while (
-            segmentLengthAccumulated +
-                distance(
-                    pathPoints[currentSegmentIndex],
-                    pathPoints[currentSegmentIndex + 1]
-                ) <
-            i
-        ) {
-            segmentLengthAccumulated += distance(
-                pathPoints[currentSegmentIndex],
-                pathPoints[currentSegmentIndex + 1]
-            )
-            currentSegmentIndex++
+    for (let i = 1; i < pathPoints.length; i++) {
+        const p1 = pathPoints[i - 1]
+        const p2 = pathPoints[i]
+        const normal = normalVector(p1, p2)
+
+        for (let j = 0; j <= resolution; j++) {
+            const t = j / resolution
+            const interpolatedPoint = interpolate(p1, p2, t)
+            const segmentLength = distance(p1, interpolatedPoint)
+
+            const sineValue =
+                amplitude *
+                Math.sin(2 * Math.PI * frequency * accumulatedDistance)
+            const wavePoint = {
+                x: interpolatedPoint.x + sineValue * normal.x,
+                y: interpolatedPoint.y + sineValue * normal.y,
+            }
+
+            sinePath += 'L' + [wavePoint.x, wavePoint.y].join(',')
+            accumulatedDistance += segmentLength
         }
-
-        // Calculate the exact point and its normal vector
-        let segmentRatio =
-            (i - segmentLengthAccumulated) /
-            distance(
-                pathPoints[currentSegmentIndex],
-                pathPoints[currentSegmentIndex + 1]
-            )
-        let pointOnPath = interpolate(
-            pathPoints[currentSegmentIndex],
-            pathPoints[currentSegmentIndex + 1],
-            segmentRatio
-        )
-        let dx =
-            pathPoints[currentSegmentIndex + 1].x -
-            pathPoints[currentSegmentIndex].x
-        let dy =
-            pathPoints[currentSegmentIndex + 1].y -
-            pathPoints[currentSegmentIndex].y
-        let normal = { x: -dy, y: dx }
-
-        // Normalize the normal vector
-        let normalLength = Math.sqrt(normal.x * normal.x + normal.y * normal.y)
-        normal.x /= normalLength
-        normal.y /= normalLength
-
-        // Apply sine wave transformation
-        let sineValue =
-            amplitude *
-            Math.sin(
-                2 * Math.PI * frequency * (accumulatedLength / totalLength)
-            )
-        accumulatedLength += distance(pointOnPath, pointOnPath)
-
-        sinePath +=
-            'L' +
-            [
-                pointOnPath.x + sineValue * normal.x,
-                pointOnPath.y + sineValue * normal.y,
-            ].join(',')
     }
 
     return sinePath
 }
+
+
+
+
+
+function sineWaveAlongPathAdv(
+    svgPathString,
+    amplitude,
+    frequency,
+    resolution = 100
+) {
+    // Parse the SVG path string into points
+    function parsePathString(pathStr) {
+        let points = []
+        const commands = pathStr.match(/[MLZ][^MLZ]+/gi) || []
+
+        commands.forEach((cmd) => {
+            const coords = cmd.slice(1).trim().split(/\s+|,/).map(Number)
+            for (let i = 0; i < coords.length; i += 2) {
+                points.push({ x: coords[i], y: coords[i + 1] })
+            }
+        })
+        return points
+    }
+
+    // Calculate the distance between two points
+    function distance(p1, p2) {
+        return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
+    }
+
+    // Interpolate a point on the line segment
+    function interpolate(p1, p2, ratio) {
+        return {
+            x: p1.x + (p2.x - p1.x) * ratio,
+            y: p1.y + (p2.y - p1.y) * ratio,
+        }
+    }
+
+    // Calculate the normal (perpendicular) to the line segment
+    function getNormal(p1, p2) {
+        const dx = p2.x - p1.x
+        const dy = p2.y - p1.y
+        const len = Math.sqrt(dx * dx + dy * dy)
+        return { x: -dy / len, y: dx / len }
+    }
+
+    let pathPoints = parsePathString(svgPathString)
+    if (pathPoints.length < 2) return ''
+
+    let totalLength = 0
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+        let segLength = distance(pathPoints[i], pathPoints[i + 1])
+        if (isNaN(segLength)) {
+            console.error(
+                'Invalid segment length',
+                pathPoints[i],
+                pathPoints[i + 1]
+            )
+            return '' // Early return in case of invalid segment length
+        }
+        totalLength += segLength
+    }
+
+    let sinePath = 'M' + [pathPoints[0].x, pathPoints[0].y].join(',')
+    let accumulatedLength = 0
+
+    for (let i = 1; i < pathPoints.length; i++) {
+        let segmentLength = distance(pathPoints[i - 1], pathPoints[i])
+        let pointsInSegment = Math.max(
+            Math.floor(resolution * (segmentLength / totalLength)),
+            1
+        )
+
+      console.log('pointsInSegment:', pointsInSegment)
+
+        for (let j = 0; j < pointsInSegment; j++) {
+            let t = j / pointsInSegment
+            let interpolatedPoint = interpolate(
+                pathPoints[i - 1],
+                pathPoints[i],
+                t
+            )
+            let normal = getNormal(pathPoints[i - 1], pathPoints[i])
+
+            let phase =
+                (2 * Math.PI * frequency * accumulatedLength) / totalLength
+            let sineOffset = amplitude * Math.sin(phase)
+
+            let wavePoint = {
+                x: interpolatedPoint.x + sineOffset * normal.x,
+                y: interpolatedPoint.y + sineOffset * normal.y,
+            }
+
+            sinePath += 'L' + [wavePoint.x, wavePoint.y].join(',')
+
+            accumulatedLength += segmentLength / pointsInSegment
+        }
+    }
+
+    if (svgPathString.trim().endsWith('Z')) {
+        sinePath += 'Z'
+    }
+  debugger;
+    return sinePath
+}
+
+
+
 
 
 
