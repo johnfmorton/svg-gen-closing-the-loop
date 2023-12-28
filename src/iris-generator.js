@@ -548,22 +548,6 @@ function _settingsInit() {
     },
   }
 
-  // const resolution = {
-  //       sltype: 'sl-input',
-  //       name: 'resolution',
-  //       options: {
-  //           label: 'Resolution',
-  //           type: 'number',
-  //           min: 0,
-  //           max: 1000,
-  //           value: 100,
-  //           step: 1,
-  //           size: 'medium',
-  //           helpText: 'The resolution of the sine wave.',
-  //       },
-  //   }
-
-
     const closeLoop = {
         sltype: 'sl-switch',
         name: 'closeLoop',

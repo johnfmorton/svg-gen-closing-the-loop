@@ -16,7 +16,7 @@ import '@shoelace-style/shoelace/dist/themes/light.css';
 *
 **/
 
-import { svgGenerator } from './squiggly-shape.js';
+import { svgGenerator } from './iris-generator.js';
 
 // Used for the filename of the SVG generated that will be timestamped
 // Don't include .svg extension in the name. Also, the filename will
